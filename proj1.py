@@ -32,6 +32,8 @@ class Rand48(object):
 
 
 
+
+
 class Process:
 	arrivalTime = 0
 	bursts = 0
@@ -95,6 +97,28 @@ for x in range(numProcesses):
 
 	z = Process(arrivalTime,bursts,cpuBurst,ioBurst)
 	procceses.append(z)
+
+
+
+
+
+
+def SRT(procceses, preemptions):
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 for y in procceses:
