@@ -59,11 +59,13 @@ class Process:
 
 
 
-def SRT(procceses, preemptions,lmda,alpha,tcs):
-
+def SRT(proceses, preemptions,lmda,alpha,tcs):
+	processList = proceses.copy()
 	guess = 1/lmda
 	queue = []
-	
+	time = 0
+	while(len(processList) > 0):
+
 
 
 
@@ -72,7 +74,7 @@ def SRT(procceses, preemptions,lmda,alpha,tcs):
 
 rand = Rand48(seed)
 rand.srand(seed)
-procceses = []
+processes = []
 for x in range(numProcesses):
 	y=upperBound+1
 	while (y>upperBound):
@@ -110,14 +112,14 @@ for x in range(numProcesses):
 		ioBurst.append(math.ceil(p))
 
 	z = Process(arrivalTime,bursts,cpuBurst,ioBurst)
-	procceses.append(z)
+	processes.append(z)
 
 
 
 
 
 
-for y in procceses:
+for y in processes:
 	print("Arrival time:", y.getAT())
 	print("CPUBurst Times:",len(y.getCPUBursts()))
 	print("IOBurst  Times:",len(y.getIOBursts()))
