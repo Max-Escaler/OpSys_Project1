@@ -1,9 +1,6 @@
-def one(x):
-	x.append(1)
-	x = [2,3]
-
-
-
 y = [0]
-one(y)
+y = [1] +[2]+ y
+print(y)
+
+del y[1]
 print(y)

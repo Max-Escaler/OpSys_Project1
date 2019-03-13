@@ -39,6 +39,8 @@ class Process:
 	bursts = 0
 	burstTimes = []
 	IOTimes= []
+	waitTime = 0
+	turnAroundTime = 0
 	state = "READY"
 	def __init__(self,at, b,bt,iot):
 		self.arrivalTime = at
@@ -53,6 +55,18 @@ class Process:
 		return self.burstTimes
 	def getIOBursts(self):
 		return self.IOTimes
+
+
+
+
+def SRT(procceses, preemptions,lmda,alpha,tcs):
+
+	guess = 1/lmda
+	queue = []
+	
+
+
+
 
 ## Driver Function
 
@@ -97,24 +111,6 @@ for x in range(numProcesses):
 
 	z = Process(arrivalTime,bursts,cpuBurst,ioBurst)
 	procceses.append(z)
-
-
-
-
-
-
-def SRT(procceses, preemptions):
-	
-
-
-
-
-
-
-
-
-
-
 
 
 
