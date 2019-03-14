@@ -41,6 +41,7 @@ class Process:
 	IOTimes= []
 	waitTime = 0
 	turnAroundTime = 0
+	runTime = 0.0;
 	state = "READY"
 	def __init__(self,at, b,bt,iot):
 		self.arrivalTime = at
@@ -56,15 +57,38 @@ class Process:
 	def getIOBursts(self):
 		return self.IOTimes
 
+	def getRunTime(self):
+		return self.runTime
+	def tick(self):
+		self.runTime +=1
+		self.turnAroundTime += 1
+	def wait(self):
+		self.waitTime += 1
+		self.turnAroundTime += 1
 
 
-
-def SRT(proceses, preemptions,lmda,alpha,tcs):
-	processList = proceses.copy()
+def SRT(processes, preemptions,lmda,alpha,tcs):
+	processList = processes.copy()
 	guess = 1/lmda
-	queue = []
+	readyQueue = []
 	time = 0
 	while(len(processList) > 0):
+		for x in processList:
+			if(time == x.getAT()):
+				if(len(readyQueue) == 0):
+					readyQueue.append(x)
+				if(len(readyQueue) == 1):
+					if(  (guess - readyQueue[0].getRunTime())  > (guess - x.getRunTime())  ):
+						readyQueue = [x] + readyQueue
+					else:
+						readyQueue.append(x)
+				if(len(readyQueue) > 1):
+					for z in range(0,len(readyQueue)):
+						
+		time +=1
+
+
+
 
 
 
@@ -72,6 +96,7 @@ def SRT(proceses, preemptions,lmda,alpha,tcs):
 
 ## Driver Function
 
+## Pseudo random generation of processes
 rand = Rand48(seed)
 rand.srand(seed)
 processes = []
@@ -113,7 +138,7 @@ for x in range(numProcesses):
 
 	z = Process(arrivalTime,bursts,cpuBurst,ioBurst)
 	processes.append(z)
-
+### processes is a list of the generated process objects
 
 
 
@@ -124,6 +149,7 @@ for y in processes:
 	print("CPUBurst Times:",len(y.getCPUBursts()))
 	print("IOBurst  Times:",len(y.getIOBursts()))
 
+SRT(processes, 1, lmda, alpha, tcs)
 
 
 
