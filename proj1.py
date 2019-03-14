@@ -35,6 +35,7 @@ class Rand48(object):
 
 
 class Process:
+	ID = 0
 	arrivalTime = 0
 	bursts = 0
 	burstTimes = []
@@ -43,14 +44,16 @@ class Process:
 	turnAroundTime = 0
 	runTime = 0.0;
 	state = "READY"
-	def __init__(self,at, b,bt,iot):
+	def __init__(self,at, b,bt,iot,ID):
 		self.arrivalTime = at
 		self.bursts = b
 		self.burstTimes = bt
 		self.IOTimes = iot
-
+		self.ID = ID
+	def getID(self):
+		return int(self.ID)
 	def getAT(self):
-		return self.arrivalTime
+		return int(self.arrivalTime)
 
 	def getCPUBursts(self):
 		return self.burstTimes
@@ -77,18 +80,51 @@ def SRT(processes, preemptions,lmda,alpha,tcs):
 			if(time == x.getAT()):
 				if(len(readyQueue) == 0):
 					readyQueue.append(x)
-				if(len(readyQueue) == 1):
+					processList.remove(x)
+					continue
+				elif(len(readyQueue) == 1):
 					if(  (guess - readyQueue[0].getRunTime())  > (guess - x.getRunTime())  ):
 						readyQueue = [x] + readyQueue
+						processList.remove(x)
+						continue
 					else:
-						readyQueue.append(x)
-				if(len(readyQueue) > 1):
+						if(readyQueue[0].getID() < x.getID()):
+							readyQueue.append(x)
+							processList.remove(x)
+							continue
+						else:
+							readyQueue = [x] + readyQueue
+							processList.remove(x)
+							continue
+				elif(len(readyQueue) > 1):
 					for z in range(0,len(readyQueue)):
-						
-		time +=1
+							if((guess - readyQueue[z].getRunTime())  < (guess - x.getRunTime()) and (guess - readyQueue[z+1].getRunTime())  > (guess - x.getRunTime())):
+								readyQueue.insert(z,x)
+								processList.remove(x)
+								break
+							elif((guess - readyQueue[z].getRunTime())  == (guess - x.getRunTime())):
+								if(readyQueue[z].getID() > x.getID()):
+									readyQueue.insert(z-1,x)
+									processList.remove(x)
+									break
+								else:
+									readyQueue.insert(z,x)
+									processList.remove(x)
+									break
 
 
+		time +=1	
+		if(len(readyQueue) >1):
+			readyQueue[0].tick()
+			for x in range(1,len(readyQueue)):
+				readyQueue[x].wait()
+		if(len(readyQueue) ==1):
+			readyQueue[0].tick()
 
+	for x in processList:
+		print("PL:",x.getID())
+	for x in readyQueue:
+		print("RQ:", x.getID())
 
 
 
@@ -99,6 +135,7 @@ def SRT(processes, preemptions,lmda,alpha,tcs):
 ## Pseudo random generation of processes
 rand = Rand48(seed)
 rand.srand(seed)
+ID = 0
 processes = []
 for x in range(numProcesses):
 	y=upperBound+1
@@ -136,7 +173,8 @@ for x in range(numProcesses):
 			p = -math.log(r)/lmda;
 		ioBurst.append(math.ceil(p))
 
-	z = Process(arrivalTime,bursts,cpuBurst,ioBurst)
+	z = Process(arrivalTime,bursts,cpuBurst,ioBurst,ID)
+	ID += 1
 	processes.append(z)
 ### processes is a list of the generated process objects
 
@@ -149,7 +187,7 @@ for y in processes:
 	print("CPUBurst Times:",len(y.getCPUBursts()))
 	print("IOBurst  Times:",len(y.getIOBursts()))
 
-SRT(processes, 1, lmda, alpha, tcs)
+SRT(processes, True, lmda, alpha, tcs)
 
 
 
