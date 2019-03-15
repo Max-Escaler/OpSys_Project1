@@ -35,7 +35,7 @@ class Rand48(object):
 
 
 class Process:
-	ID = 0
+	ID =""
 	arrivalTime = 0
 	bursts = 0
 	burstTimes = []
@@ -43,15 +43,14 @@ class Process:
 	waitTime = 0
 	turnAroundTime = 0
 	runTime = 0.0;
-	state = "READY"
 	def __init__(self,at, b,bt,iot,ID):
 		self.arrivalTime = at
 		self.bursts = b
 		self.burstTimes = bt
 		self.IOTimes = iot
-		self.ID = ID
+		self.ID = chr(ID)
 	def getID(self):
-		return int(self.ID)
+		return self.ID
 	def getAT(self):
 		return int(self.arrivalTime)
 
@@ -71,46 +70,60 @@ class Process:
 
 
 def SRT(processes, preemptions,lmda,alpha,tcs):
+	print("0 ms: Simulation started for SRT")
 	processList = processes.copy()
 	guess = 1/lmda
 	readyQueue = []
+	blocked=[]
 	time = 0
-	while(len(processList) > 0):
+	while(len(processList) > 0 or len(readyQueue)>0):
 		for x in processList:
 			if(time == x.getAT()):
 				if(len(readyQueue) == 0):
+					print(str(time) + "ms: Process", x.ID,"Added to the ready queue")
 					readyQueue.append(x)
 					processList.remove(x)
 					continue
 				elif(len(readyQueue) == 1):
 					if(  (guess - readyQueue[0].getRunTime())  > (guess - x.getRunTime())  ):
+						print(str(time) + "ms: Process", x.ID,"Added to the ready queue and will preempt", readyQueue[0])
 						readyQueue = [x] + readyQueue
 						processList.remove(x)
 						continue
 					else:
 						if(readyQueue[0].getID() < x.getID()):
+							print(str(time) + "ms: Process", x.ID,"Added to the ready queue")
 							readyQueue.append(x)
 							processList.remove(x)
 							continue
 						else:
+							print(str(time) + "ms: Process", x.ID,"arrived; added to the ready queue and will preempt",readyQueue[0])
 							readyQueue = [x] + readyQueue
 							processList.remove(x)
 							continue
 				elif(len(readyQueue) > 1):
-					for z in range(0,len(readyQueue)):
-							if((guess - readyQueue[z].getRunTime())  < (guess - x.getRunTime()) and (guess - readyQueue[z+1].getRunTime())  > (guess - x.getRunTime())):
-								readyQueue.insert(z,x)
-								processList.remove(x)
-								break
-							elif((guess - readyQueue[z].getRunTime())  == (guess - x.getRunTime())):
-								if(readyQueue[z].getID() > x.getID()):
-									readyQueue.insert(z-1,x)
-									processList.remove(x)
-									break
-								else:
+					if(  (guess - readyQueue[0].getRunTime())  > (guess - x.getRunTime())  ):
+						print(str(time) + "ms: Process", x.ID,"Added to the ready queue and will preempt", readyQueue[0])
+						readyQueue = [x] + readyQueue
+					else:
+						for z in range(0,len(readyQueue)):
+								if((guess - readyQueue[z].getRunTime())  < (guess - x.getRunTime()) and (guess - readyQueue[z+1].getRunTime())  > (guess - x.getRunTime())):
+									print(str(time) + "ms: Process", x.ID,"Added to the ready queue")
 									readyQueue.insert(z,x)
 									processList.remove(x)
 									break
+								elif((guess - readyQueue[z].getRunTime())  == (guess - x.getRunTime())):
+									if(readyQueue[z].getID() > x.getID()):
+										print(str(time) + "ms: Process", x.ID,"Added to the ready queue")
+										readyQueue.insert(z-1,x)
+										processList.remove(x)
+										break
+									else:
+										print(str(time) + "ms: Process", x.ID,"Added to the ready queue")
+										readyQueue.insert(z,x)
+										processList.remove(x)
+										break
+
 
 
 		time +=1	
@@ -121,10 +134,11 @@ def SRT(processes, preemptions,lmda,alpha,tcs):
 		if(len(readyQueue) ==1):
 			readyQueue[0].tick()
 
-	for x in processList:
-		print("PL:",x.getID())
-	for x in readyQueue:
-		print("RQ:", x.getID())
+		if(len(readyQueue) >0 and readyQueue[0].runTime == readyQueue[0].burstTimes[0]):
+			print(str(time)+"ms:",readyQueue[0].ID , "completed a CPU burst")
+			guess = float(alpha) * readyQueue[0].burstTimes[0] + (1-float(alpha))*guess
+			print(str(time)+"ms: Recalculated tau =",guess,"for process",readyQueue[0].ID)
+			readyQueue.remove(readyQueue[0])
 
 
 
@@ -173,7 +187,7 @@ for x in range(numProcesses):
 			p = -math.log(r)/lmda;
 		ioBurst.append(math.ceil(p))
 
-	z = Process(arrivalTime,bursts,cpuBurst,ioBurst,ID)
+	z = Process(arrivalTime,bursts,cpuBurst,ioBurst,65+ID)
 	ID += 1
 	processes.append(z)
 ### processes is a list of the generated process objects
