@@ -55,6 +55,8 @@ class Process:
 	turnAroundTime = 0
 	runTime = 0.0
 	blockedTime = 0
+	isSwitching = False
+	switchTime = 0
 	def __init__(self,at, b,bt,iot,ID):
 		self.arrivalTime = at
 		self.bursts = b
@@ -77,6 +79,8 @@ class Process:
 		self.runTime +=1
 		self.turnAroundTime += 1
 	def wait(self):
+		if(self.isSwitching):
+			self.switchTime+=1
 		self.waitTime += 1
 		self.turnAroundTime += 1
 	def block(self):
@@ -92,10 +96,17 @@ def SRT(processes, preemptions,lmda,alpha,tcs):
 	readyQueue = []
 	CPU = []
 	blocked=[]
+	conSwitching = False
+	switchTime = int(int(tcs)/2)
 	time = 0
 	#This program will execute as long as there are processes waiting to arrive, in the ready queue, or in the blocked queue
-	while(len(processList) > 0 or len(readyQueue)>0 or len(blocked) > 0 or len(CPU) > 0):
-		conSwitched = False
+	while(len(processList) > 0 or len(readyQueue)>0 or len(blocked) > 0 or len(CPU) > 0 or conSwitching == True):
+
+		if(len(processList) == 0 and len(readyQueue)==0 and len(blocked) == 0 and len(CPU) == 0):
+			time+=1
+			print("time", str(time)+"ms: Simulator ended for SRT", end = " ")
+			printQueue(readyQueue)
+			break
 		# We check through all of the processes for an arrival on every tick of the sim
 		for x in processList:
 			## if we find one that is arriving, we add it in the correct place in the readyQueue
@@ -155,56 +166,49 @@ def SRT(processes, preemptions,lmda,alpha,tcs):
 										processList.remove(x)
 										break
 
+		if(switchTime == int(tcs)/2):
+			conSwitching = False
+		if(conSwitching):
+			switchTime += 1
 
-		if(len(CPU) == 0 and len(readyQueue) > 0 ):
-			CPU.append(readyQueue[0])
-			readyQueue.remove(readyQueue[0])
-			for x in range(0,int(tcs/2)):
+
+
+
+
+		if(len(CPU) ==1):
+			if(conSwitching):
+				CPU[0].wait()
+			else:
 				CPU[0].tick()
-				for y in readyQueue:
-					y.wait()
-				for y in blocked:
-					y.block()
-				time+=1
-			print("time", str(time)+"ms: Process", CPU[0].ID,"started using the CPU for",str(CPU[0].burstTimes[0])+"ms burst", end = " ")
-			printQueue(readyQueue)
-
-
-		
-		time +=1
-		if(len(CPU) ==1): 
-			CPU[0].tick()
 			for x in readyQueue:
 				x.wait()
-			for x in blocked:
-				x.block()
+
+
+			if(conSwitching):
+				for x in blocked:
+					if(x.isSwitching):
+						x.wait()
+					else:
+						x.block()
+			else:
+				for x in blocked:
+					x.block()
 		else:
 			for x in readyQueue:
 				x.wait()
-			for x in blocked:
-				x.block()
+			if(conSwitching):
+				for x in blocked:
+					if(x.isSwitching):
+						x.wait()
+					else:
+						x.block()
+			else:	
+				for x in blocked:
+					x.block()
 
-		if(len(CPU) >0 and CPU[0].runTime == CPU[0].burstTimes[0] and len(CPU[0].burstTimes) >1):
-			print("time", str(time)+"ms:",CPU[0].ID , "completed a CPU burst;",len(CPU[0].burstTimes)-1,"bursts to go", end = " ")
-			printQueue(readyQueue)
-			guess = float(alpha) * CPU[0].burstTimes[0] + (1-float(alpha))*guess
-			guess = int(guess)
-			print("time",str(time)+"ms: Recalculated tau =",str(guess)+"ms for process",CPU[0].ID, end = " ")
-			printQueue(readyQueue)
-			print("time", str(time)+"ms: Process",CPU[0].ID,"switching out of CPU; will block on I/O until time",time+CPU[0].IOTimes[0], end = " ")
-			printQueue(readyQueue)
-			CPU[0].runTime = 0
-			blocked.append(CPU[0])
-			CPU[0].burstTimes.pop(0)
-			CPU.remove(CPU[0])
-
-		if(len(CPU) >0 and CPU[0].runTime == CPU[0].burstTimes[0] and len(CPU[0].burstTimes) ==1):
-			print("time", str(time)+"ms:",CPU[0].ID , "terminated", end = " ")
-			printQueue(readyQueue)
-			CPU.pop(0)
-
-
-
+		for x in blocked:
+			if(x.switchTime == int(int(tcs)/2)):
+				x.isSwitching=False
 
 		if(len(blocked) > 0):
 			for x in blocked:
@@ -260,7 +264,47 @@ def SRT(processes, preemptions,lmda,alpha,tcs):
 											blocked.remove(x)
 											break
 
+		
 
+
+		if(len(CPU) >0 and CPU[0].runTime == CPU[0].burstTimes[0] and len(CPU[0].burstTimes) >1 and switchTime == int(int(tcs)/2)):
+			print("time", str(time)+"ms:",CPU[0].ID , "completed a CPU burst;",len(CPU[0].burstTimes)-1,"bursts to go", end = " ")
+			printQueue(readyQueue)
+			guess = float(alpha) * CPU[0].burstTimes[0] + (1-float(alpha))*guess
+			guess = math.ceil(guess)
+			print("time",str(time)+"ms: Recalculated tau =",str(guess)+"ms for process",CPU[0].ID, end = " ")
+			printQueue(readyQueue)
+			print("time", str(time)+"ms: Process",CPU[0].ID,"switching out of CPU; will block on I/O until time",time+CPU[0].IOTimes[0]+int(int(tcs)/2), end = " ")
+			printQueue(readyQueue)
+			CPU[0].runTime = 0
+			CPU[0].switchTime = 0
+			CPU[0].isSwitching = True
+			blocked.append(CPU[0])
+			CPU[0].burstTimes.pop(0)
+			CPU.remove(CPU[0])
+			conSwitching = True
+			switchTime = 0 
+
+		if(len(CPU) == 0 and len(readyQueue) > 0 and switchTime == int(int(tcs)/2) ):
+			CPU.append(readyQueue[0])
+			readyQueue.remove(readyQueue[0])
+			conSwitching = True
+			switchTime = 0
+			print("time", str(int(int(time) + int(tcs)/2))+"ms: Process", CPU[0].ID,"started using the CPU for",str(CPU[0].burstTimes[0])+"ms burst", end = " ")
+			printQueue(readyQueue)	
+		if(len(CPU) >0 and CPU[0].runTime == CPU[0].burstTimes[0] and len(CPU[0].burstTimes) ==1 and switchTime == int(int(tcs)/2)):
+			print("time", str(time)+"ms:",CPU[0].ID , "terminated", end = " ")
+			printQueue(readyQueue)
+			CPU.pop(0)
+			conSwitching = True
+			switchTime = 0
+
+
+
+
+		
+		
+		time +=1
 
 
 ## Driver Function
