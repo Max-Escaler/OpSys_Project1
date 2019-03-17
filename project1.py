@@ -90,7 +90,7 @@ class Process:
 
 
 def SRT(processes, preemptions,lmda,alpha,tcs):
-	print("0 ms: Simulation started for SRT")
+	print("time 0 ms: Simulation started for SRT")
 	processList = processes.copy()
 	guess = int(1/lmda)
 	readyQueue = []
@@ -351,6 +351,7 @@ for x in range(numProcesses):
 		ioBurst.append(math.ceil(p))
 
 	z = Process(arrivalTime,bursts,cpuBurst,ioBurst,65+ID)
+	print("Process",chr(65+ID),"[NEW] (arrival time",arrivalTime,"ms)",bursts,"CPU bursts" )
 	ID += 1
 	processes.append(z)
 ### processes is a list of the generated process objects
