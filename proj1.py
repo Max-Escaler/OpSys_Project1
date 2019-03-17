@@ -95,6 +95,7 @@ def SRT(processes, preemptions,lmda,alpha,tcs):
 	time = 0
 	#This program will execute as long as there are processes waiting to arrive, in the ready queue, or in the blocked queue
 	while(len(processList) > 0 or len(readyQueue)>0 or len(blocked) > 0 or len(CPU) > 0):
+		conSwitched = False
 		# We check through all of the processes for an arrival on every tick of the sim
 		for x in processList:
 			## if we find one that is arriving, we add it in the correct place in the readyQueue
@@ -158,12 +159,19 @@ def SRT(processes, preemptions,lmda,alpha,tcs):
 		if(len(CPU) == 0 and len(readyQueue) > 0 ):
 			CPU.append(readyQueue[0])
 			readyQueue.remove(readyQueue[0])
+			for x in range(0,int(tcs/2)):
+				CPU[0].tick()
+				for y in readyQueue:
+					y.wait()
+				for y in blocked:
+					y.block()
+				time+=1
 			print("time", str(time)+"ms: Process", CPU[0].ID,"started using the CPU for",str(CPU[0].burstTimes[0])+"ms burst", end = " ")
 			printQueue(readyQueue)
 
 
-
-		time +=1	
+		
+		time +=1
 		if(len(CPU) ==1): 
 			CPU[0].tick()
 			for x in readyQueue:
@@ -251,8 +259,6 @@ def SRT(processes, preemptions,lmda,alpha,tcs):
 											printQueue(readyQueue)
 											blocked.remove(x)
 											break
-
-
 
 
 
