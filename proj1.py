@@ -176,12 +176,12 @@ def SRT(processes, preemptions,lmda,alpha,tcs):
 			for x in blocked:
 				x.block()
 
-		if(len(CPU) >0 and CPU[0].runTime == CPU[0].burstTimes[0]):
+		if(len(CPU) >0 and CPU[0].runTime == CPU[0].burstTimes[0] and len(CPU[0].burstTimes) >1):
 			print("time", str(time)+"ms:",CPU[0].ID , "completed a CPU burst;",len(CPU[0].burstTimes)-1,"bursts to go", end = " ")
 			printQueue(readyQueue)
 			guess = float(alpha) * CPU[0].burstTimes[0] + (1-float(alpha))*guess
 			guess = int(guess)
-			print("time",str(time)+"ms: Recalculated tau =",guess,"for process",CPU[0].ID, end = " ")
+			print("time",str(time)+"ms: Recalculated tau =",str(guess)+"ms for process",CPU[0].ID, end = " ")
 			printQueue(readyQueue)
 			print("time", str(time)+"ms: Process",CPU[0].ID,"switching out of CPU; will block on I/O until time",time+CPU[0].IOTimes[0], end = " ")
 			printQueue(readyQueue)
@@ -189,6 +189,14 @@ def SRT(processes, preemptions,lmda,alpha,tcs):
 			blocked.append(CPU[0])
 			CPU[0].burstTimes.pop(0)
 			CPU.remove(CPU[0])
+
+		if(len(CPU) >0 and CPU[0].runTime == CPU[0].burstTimes[0] and len(CPU[0].burstTimes) ==1):
+			print("time", str(time)+"ms:",CPU[0].ID , "terminated", end = " ")
+			printQueue(readyQueue)
+			CPU.pop(0)
+
+
+
 
 		if(len(blocked) > 0):
 			for x in blocked:
