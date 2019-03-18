@@ -8,6 +8,10 @@ numProcesses = int(sys.argv[4])
 tcs = sys.argv[5]
 alpha = sys.argv[6]
 timeSlice = sys.argv[7]
+if(len(sys.argv) == 9): # change to handle incorrect args
+	addEnd = sys.argv[8]
+else:
+	addEnd = "END"
 
 def printQueue(queue):
 	new = []
@@ -307,6 +311,78 @@ def SRT(processes, preemptions,lmda,alpha,tcs):
 		time +=1
 
 
+def RR(processes, tSlice, insertSide,tcs):
+	processList = processes.copy()
+	readyQueue = []
+	CPU = []
+	blocked = []
+	time = 0 # keeps track of the global cpu runtime
+	# timeRan = 0 # keeps track of how long a given process has run. Checked against tSlice
+	# contextLag = tcs # used for counting context switch time
+	while(len(processList)>0 or len(readyQueue)>0 or len(blocked)>0 or len(CPU)>0):
+		# this will loop through the list of processes that have yet to arrive and 
+		# if their arrival time matches the current time they will be moved to the 
+		# process queue
+		for x in processList:
+			if(time == x.getAT() ):
+				if(insertSide == "BEGINNING"):
+					readyQueue.insert(0,x)
+				else:
+					readyQueue.append(x)
+				processList.remove(x)
+				print("process", x.getID(), " added to readyQueue")
+		for z in readyQueue:
+			print(z.getID, "arrived at", z.getAT() )
+
+		## running of process in CPU and ones in blocked/readyQueue
+		if(len(CPU)==0 and len(readyQueue)>0):
+			CPU += [readyQueue.pop(0)]
+			print("time", str(time)+"ms: Process", CPU[0].ID,"started using the CPU for",str(CPU[0].burstTimes[0])+"ms burst", end = " ")
+			printQueue(readyQueue)
+		elif(len(CPU)==1):
+			if( (CPU[0].runTime < tSlice) and (CPU[0].runTime < CPU[0].burstTimes[0]) ):
+				CPU[0].tick()
+				for x in blocked:
+					x.block()
+				for y in readyQueue:
+					y.wait()
+			elif(CPU[0].runTime == tSlice): ## check later if burst == tSlice as well
+				if(len(readyQueue)==0):
+					print("time", str(time)+"ms: Time slice expired; no preemption because ready queue is empty", end = " ")
+					printQueue(readyQueue)
+					CPU[0].burstTimes[0] -= tSlice
+					CPU[0].runTime = 0
+				else:
+					# time 457ms: Time slice expired; process B preempted with 78ms to go [Q A]
+					print("time", str(time)+"ms: Time slice expired; process",CPU[0].ID , "preempted with",str(CPU[0].burstTimes[0]-tSlice)+"ms to go", end = " ")
+					printQueue(readyQueue)
+					CPU[0].burstTimes[0] -= tSlice
+					CPU[0].runTime = 0
+					blocked += [CPU.pop()]
+					CPU += [readyQueue.pop(0)]
+					
+
+
+
+		# if(timeRan == tSlice or timeRan == readyQueue[pIndex].burstTimes[0]):
+		# 	if(readyQueue[pIndex].burstTimes[0] > tSlice):
+		# 		readyQueue[pIndex].burstTimes[0] -= timeRan
+		# 		readyQueue += [readyQueue.pop(pIndex)]
+		# 	else:
+		# 		readyQueue[pIndex].burstTimes.pop(0)
+		# 		readyQueue += [readyQueue.pop(pIndex)]
+		# 	pIndex = 0
+		# 	timeRan = 0
+		# 	contextLag = 0
+		# else:
+		# 	timeRan += 1
+		# 		# WORKING: accounting for context switch lag when running
+		# if(len(processList)==0):
+		# 	break
+		time += 1
+
+
+
 ## Driver Function
 
 ## Pseudo random generation of processes
@@ -359,8 +435,8 @@ for x in range(numProcesses):
 
 
 
-SRT(processes, True, lmda, alpha, tcs)
-
+# SRT(processes, True, lmda, alpha, tcs)
+RR(processes,timeSlice, addEnd, tcs)
 
 
 
