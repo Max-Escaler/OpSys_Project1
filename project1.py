@@ -58,13 +58,15 @@ class Process:
 	isSwitching = False
 	switchTime = 0
 	guess = 0
-	def __init__(self,at, b,bt,iot,ID,lmda):
+	t = ""
+	def __init__(self,at, b,bt,iot,ID,lmda,t):
 		self.arrivalTime = at
 		self.bursts = b
 		self.burstTimes = bt
 		self.IOTimes = iot
 		self.ID = chr(ID)
 		self.guess = 1/lmda
+		self.t = t
 	def getID(self):
 		return self.ID
 	def getAT(self):
@@ -91,14 +93,19 @@ class Process:
 		self.turnAroundTime+=1
 
 
-def SRT(processes, preemptions,lmda,alpha,tcs):
+def SRT(processes, preemptions,lmda,a,t):
 	readyQueue = []
 	if(not preemptions):
 		print("time 0 ms: Simulation started for SJF", end = " ")
+	else:
+		print("time 0 ms: Simulation started for SRT", end = " ")
+
 	
 	printQueue(readyQueue)
-	processList = processes.copy()
+	processList = list(processes)
 	guess = int(1/lmda)
+	alpha = a
+	tcs = t
 	CPU = []
 	blocked=[]
 	conSwitching = False
@@ -111,6 +118,8 @@ def SRT(processes, preemptions,lmda,alpha,tcs):
 			time+=1
 			if(not preemptions):
 				print("time", str(time)+"ms: Simulator ended for SJF", end = " ")
+			else:
+				print("time", str(time)+"ms: Simulator ended for SRT", end = " ")
 			printQueue(readyQueue)
 			break
 		# We check through all of the processes for an arrival on every tick of the sim
@@ -197,8 +206,7 @@ def SRT(processes, preemptions,lmda,alpha,tcs):
 			while (y < len(blocked)):
 				x = blocked[y]
 				if(x.blockedTime == x.IOTimes[0]):
-					if(x.ID == "G"):
-						print("G",x.guess - x.runTime)
+					print(x.ID, x.guess-x.runTime)
 					for p in readyQueue:
 							print(p.ID,p.guess-p.runTime)
 					x.IOTimes.pop(0)
@@ -214,8 +222,11 @@ def SRT(processes, preemptions,lmda,alpha,tcs):
 							for j in range(index):
 								if((readyQueue[j].guess - readyQueue[j].runTime) == (x.guess - x.runTime)):
 									for k in range(j,index):
+										print(readyQueue[k].ID,ord(readyQueue[k].ID))
+										print(x.ID, ord(x.ID))
 										if(ord(readyQueue[k].ID) > ord(x.ID)):
 											index = k
+											break
 							break
 
 
@@ -238,7 +249,11 @@ def SRT(processes, preemptions,lmda,alpha,tcs):
 					blocked.remove(x)
 					y-=1
 					
-					print("time", str(time) + "ms: Process", x.ID,"(tau", str(x.guess) +"ms) completed I/O; added to the ready queue" , end = " ")  
+					print("time", str(time) + "ms: Process", x.ID,"(tau", str(x.guess) +"ms) completed I/O; added to the ready queue" , end = " ") 
+					if(len(CPU) > 0 and len(readyQueue)>0 and (CPU[0].guess - CPU[0].runTime) > (x.guess - x.runTime) and switchTime == int(int(tcs)/2) and preemptions):
+						print("and will preempt",CPU[0].ID, end = " ")
+					else:
+						print("; added to the ready queue",end = " ")
 					printQueue(readyQueue)
 				y+=1
 
@@ -261,7 +276,10 @@ def SRT(processes, preemptions,lmda,alpha,tcs):
 			CPU[0].burstTimes.pop(0)
 			CPU.remove(CPU[0])
 			conSwitching = True
-			switchTime = 0 
+			switchTime = 0
+		if(len(CPU) > 0 and len(readyQueue)>0 and  (CPU[0].guess - CPU[0].runTime) > (readyQueue[0].guess - readyQueue[0].runTime) and switchTime == int(int(tcs)/2) and preemptions):
+			pass
+
 
 		if(len(CPU) == 0 and len(readyQueue) > 0 and switchTime == int(int(tcs)/2) ):
 			CPU.append(readyQueue[0])
@@ -292,6 +310,7 @@ rand = Rand48(seed)
 rand.srand(seed)
 ID = 0
 processes = []
+SRTprocesses=[]
 for x in range(numProcesses):
 	y=upperBound+1
 	while (y>upperBound):
@@ -301,7 +320,9 @@ for x in range(numProcesses):
 	arrivalTime =  math.floor(y)
 	bursts = int(rand.drand() * 100)+1
 	cpuBurst = []
+	cpuBurst2 = []
 	ioBurst = []
+	ioBurst2=[]
 	for q in range(bursts):
 		if (q == bursts-1):
 			p=upperBound+1
@@ -311,6 +332,7 @@ for x in range(numProcesses):
 
 
 			cpuBurst.append(math.ceil(p))
+			cpuBurst2.append(math.ceil(p))
 			break
 
 
@@ -321,22 +343,33 @@ for x in range(numProcesses):
 
 
 		cpuBurst.append(math.ceil(p))
+		cpuBurst2.append(math.ceil(p))
+
 
 		p=upperBound+1
 		while (p>upperBound):
 			r = rand.drand()
 			p = -math.log(r)/lmda;
 		ioBurst.append(math.ceil(p))
+		ioBurst2.append(math.ceil(p))
 
-	z = Process(arrivalTime,bursts,cpuBurst,ioBurst,65+ID,lmda)
-	print("Process",chr(65+ID),"[NEW] (arrival time",arrivalTime,"ms)",bursts,"CPU bursts" )
+
+	z = Process(arrivalTime,bursts,cpuBurst,ioBurst,65+ID,lmda,"SJF")
+	q = Process(arrivalTime,bursts,cpuBurst2,ioBurst2,65+ID,lmda,"SRT")
+
 	ID += 1
 	processes.append(z)
+	SRTprocesses.append(q)
 ### processes is a list of the generated process objects
-
-
+for x in processes:
+	print("Process",x.ID,"[NEW] (arrival time",x.arrivalTime,"ms)",x.bursts,"CPU bursts" )
+for x in SRTprocesses:
+	print("Process",x.ID,"[NEW] (arrival time",x.arrivalTime,"ms)",x.burstTimes,"CPU bursts" )
 SRT(processes, False, lmda, alpha, tcs)
+for x in SRTprocesses:
+	print("Process",x.ID,"[NEW] (arrival time",x.arrivalTime,"ms)",x.burstTimes,"CPU bursts" )
 
+SRT(SRTprocesses, True, lmda, alpha, tcs)
 
 
 
