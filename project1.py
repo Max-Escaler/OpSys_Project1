@@ -53,7 +53,7 @@ class Process:
 	IOTimes= []
 	waitTime = 0
 	turnAroundTime = 0
-	runTime = 0.0
+	runTime = 0
 	blockedTime = 0
 	isSwitching = False
 	switchTime = 0
@@ -104,9 +104,9 @@ def SRT(processes, preemptions,lmda,alpha,tcs):
 	conSwitching = False
 	switchTime = int(int(tcs)/2)
 	time = 0
+	index = 0
 	#This program will execute as long as there are processes waiting to arrive, in the ready queue, or in the blocked queue
 	while(len(processList) > 0 or len(readyQueue)>0 or len(blocked) > 0 or len(CPU) > 0 or conSwitching == True):
-
 		if(len(processList) == 0 and len(readyQueue)==0 and len(blocked) == 0 and len(CPU) == 0):
 			time+=1
 			if(not preemptions):
@@ -117,60 +117,35 @@ def SRT(processes, preemptions,lmda,alpha,tcs):
 		for x in processList:
 			## if we find one that is arriving, we add it in the correct place in the readyQueue
 			if(time == x.getAT()):
-				if(len(readyQueue) == 0):
-					print("time", str(time) + "ms: Process", x.ID,"(tau", str(x.guess) +"ms)arrived; added to the ready queue" , end = " ") 
-					readyQueue.append(x)
-					printQueue(readyQueue)
-					processList.remove(x)
-					continue
-				elif(len(readyQueue) == 1):
-					if(  (readyQueue[0].guess - readyQueue[0].getRunTime())  > (x.guess - x.getRunTime())  ):
-						print("time", str(time) + "ms: Process", x.ID,"(tau", str(x.guess) +"ms) arrived; added to the ready queue" , end = " ")
-						readyQueue = [x] + readyQueue
-						printQueue(readyQueue)
-						processList.remove(x)
-						continue
-					else:
-						if(readyQueue[0].getID() < x.getID()):
-							print("time", str(time) + "ms: Process", x.ID,"(tau", str(x.guess) +"ms)arrived; added to the ready queue" , end = " ")
-							readyQueue.append(x)
-							printQueue(readyQueue)
-							processList.remove(x)
-							continue
-						else:
-							print("time", str(time) + "ms: Process", x.ID,"(tau", str(x.guess) +"ms)arrived; added to the ready queue" , end = " ")
-							readyQueue = [x] + readyQueue
-							printQueue(readyQueue)
-							processList.remove(x)
-							continue
-				elif(len(readyQueue) > 1):
-					if(  (readyQueue[0].guess - readyQueue[0].getRunTime())  > (x.guess - x.getRunTime())  ):
-						print("time", str(time) + "ms: Process", x.ID,"(tau", str(x.guess) +"ms)arrived; added to the ready queue" , end = " ")
-						readyQueue = [x] + readyQueue
-						processList.remove(x)
-						printQueue(readyQueue)
+				found = False
+				found2 = False
+				foundLongest = False
+				for i in range(len(readyQueue)):
+					if((readyQueue[i].guess - readyQueue[i].runTime) > (x.guess - x.runTime)):
+						index =i
+						found = True
+						break
 
-					else:
-						for z in range(0,len(readyQueue)):
-								if((readyQueue[z].guess - readyQueue[z].getRunTime())  < (x.guess - x.getRunTime()) and (readyQueue[z+1].guess - readyQueue[z+1].getRunTime())  > (x.guess - x.getRunTime())):
-									print("time", str(time) + "ms: Process", x.ID,"(tau", str(x.guess) +"ms)arrived; added to the ready queue" , end = " ")
-									readyQueue.insert(z,x)
-									printQueue(readyQueue)
-									processList.remove(x)
-									break
-								elif((readyQueue[z].guess - readyQueue[z].getRunTime())  == (x.guess - x.getRunTime())):
-									if(readyQueue[z].getID() < x.getID()):
-										print("time", str(time) + "ms: Process", x.ID,"(tau", str(x.guess) +"ms)arrived; added to the ready queue" , end = " ")
-										readyQueue.insert(z-1,x)
-										printQueue(readyQueue)
-										processList.remove(x)
-										break
-									else:
-										print("time", str(time) + "ms: Process", x.ID,"(tau", str(x.guess) +"ms)arrived; added to the ready queue" , end = " ")
-										readyQueue.insert(z,x)
-										printQueue(readyQueue)
-										processList.remove(x)
-										break
+				if (found == False):
+					if(len(readyQueue) > 0 and (readyQueue[-1].guess - readyQueue[-1].runTime) < (x.guess-x.runTime) ):
+							foundLongest = True
+
+					for i in range(len(readyQueue)):
+						if(foundLongest):
+							break
+						if(ord(readyQueue[i].ID) > ord(x.ID)):
+							index = i
+							found2 = True
+							break
+
+				if (found or found2):
+					readyQueue = readyQueue[:index] + [x] + readyQueue[index:]
+				else:
+					readyQueue.append(x)
+				processList.remove(x)
+				print("time", str(time) + "ms: Process", x.ID,"(tau", str(x.guess) +"ms)arrived; added to the ready queue" , end = " ")  
+				printQueue(readyQueue)
+
 
 		if(switchTime == int(tcs)/2):
 			conSwitching = False
@@ -216,65 +191,62 @@ def SRT(processes, preemptions,lmda,alpha,tcs):
 			if(x.switchTime == int(int(tcs)/2)):
 				x.isSwitching=False
 
+			
 		if(len(blocked) > 0):
-			for x in blocked:
+			y=0
+			while (y < len(blocked)):
+				x = blocked[y]
 				if(x.blockedTime == x.IOTimes[0]):
-					print("time", str(time)+"ms: Process",x.ID,"(tau",str(x.guess)+"ms) completed I/O; added to ready queue", end= " ")
+					if(x.ID == "G"):
+						print("G",x.guess - x.runTime)
+					for p in readyQueue:
+							print(p.ID,p.guess-p.runTime)
 					x.IOTimes.pop(0)
 					x.blockedTime = 0
+					found = False
+					found2 = False
+					foundLongest = False
+					for i in range(len(readyQueue)):
+						if((readyQueue[i].guess - readyQueue[i].runTime) > (x.guess - x.runTime)):
+							index =i
+							found = True
 
-					if(len(readyQueue) == 0):
+							for j in range(index):
+								if((readyQueue[j].guess - readyQueue[j].runTime) == (x.guess - x.runTime)):
+									for k in range(j,index):
+										if(ord(readyQueue[k].ID) > ord(x.ID)):
+											index = k
+							break
+
+
+					if (found == False):
+						if(len(readyQueue) > 0 and (readyQueue[-1].guess - readyQueue[-1].runTime) < (x.guess-x.runTime) ):
+								foundLongest = True
+
+						for i in range(len(readyQueue)):
+							if(foundLongest):
+								break
+							if(ord(readyQueue[i].ID) > ord(x.ID) and (readyQueue[j].guess - readyQueue[j].runTime) == (x.guess - x.runTime)):
+								index = i
+								found2 = True
+								break
+
+					if (found or found2):
+						readyQueue = readyQueue[:index] + [x] + readyQueue[index:]
+					else:
 						readyQueue.append(x)
-						printQueue(readyQueue)
-						blocked.remove(x)
-						continue
-					elif(len(readyQueue) == 1):
-						if(  (readyQueue[0].guess - readyQueue[0].getRunTime())  > (x.guess - x.getRunTime())  ):
-							readyQueue = [x] + readyQueue
-							printQueue(readyQueue)
-							blocked.remove(x)
-							continue
-						else:
-							if(readyQueue[0].getID() < x.getID()):
-								readyQueue.append(x)
-								printQueue(readyQueue)
-								blocked.remove(x)
-								continue
-							else:
-								readyQueue = [x] + readyQueue
-								printQueue(readyQueue)
-								blocked.remove(x)
-								continue
-					elif(len(readyQueue) > 1):
-						if(  (readyQueue[0].guess - readyQueue[0].getRunTime())  > (x.guess - x.getRunTime())  ):
-							readyQueue = [x] + readyQueue
-							blocked.remove(x)
-							printQueue(readyQueue)
-
-						else:
-							for z in range(0,len(readyQueue)):
-									if((readyQueue[z].guess - readyQueue[z].getRunTime())  < (x.guess - x.getRunTime()) and (readyQueue[z+1].guess - readyQueue[z+1].getRunTime())  > (x.guess - x.getRunTime())):
-										readyQueue.insert(z,x)
-										printQueue(readyQueue)
-										blocked.remove(x)
-										break
-									elif((readyQueue[z].guess - readyQueue[z].getRunTime())  == (x.guess - x.getRunTime())):
-										if(readyQueue[z].getID() < x.getID()):
-											readyQueue.insert(z-1,x)
-											printQueue(readyQueue)
-											blocked.remove(x)
-											break
-										else:
-											readyQueue.insert(z,x)
-											printQueue(readyQueue)
-											blocked.remove(x)
-											break
+					blocked.remove(x)
+					y-=1
+					
+					print("time", str(time) + "ms: Process", x.ID,"(tau", str(x.guess) +"ms) completed I/O; added to the ready queue" , end = " ")  
+					printQueue(readyQueue)
+				y+=1
 
 		
 
 
 		if(len(CPU) >0 and CPU[0].runTime == CPU[0].burstTimes[0] and len(CPU[0].burstTimes) >1 and switchTime == int(int(tcs)/2)):
-			print("time", str(time)+"ms:",CPU[0].ID , "completed a CPU burst;",len(CPU[0].burstTimes)-1,"bursts to go", end = " ")
+			print("time", str(time)+"ms: Process",CPU[0].ID , "completed a CPU burst;",len(CPU[0].burstTimes)-1,"bursts to go", end = " ")
 			printQueue(readyQueue)
 			CPU[0].guess = float(alpha) * CPU[0].burstTimes[0] + (1-float(alpha))*CPU[0].guess
 			CPU[0].guess = math.ceil(CPU[0].guess)

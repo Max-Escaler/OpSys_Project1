@@ -191,41 +191,42 @@ def SRT(processes, preemptions,lmda,alpha,tcs):
 			if(x.switchTime == int(int(tcs)/2)):
 				x.isSwitching=False
 
-		for x in blocked:
-			if(x.ID == "C"):
-				print(x.blockedTime, x.IOTimes[0])
-				printQueue(blocked)
+			
 		if(len(blocked) > 0):
-			for x in blocked:
-				print(x.ID)
+			y=0
+			while (y < len(blocked)):
+				x = blocked[y]
 				if(x.blockedTime == x.IOTimes[0]):
-					
+					if(x.ID == "G"):
+						print("G",x.guess - x.runTime)
+					for p in readyQueue:
+							print(p.ID,p.guess-p.runTime)
 					x.IOTimes.pop(0)
 					x.blockedTime = 0
 					found = False
 					found2 = False
 					foundLongest = False
 					for i in range(len(readyQueue)):
-						if(int(readyQueue[i].guess - readyQueue[i].runTime) > int(x.guess - x.runTime)):
+						if((readyQueue[i].guess - readyQueue[i].runTime) > (x.guess - x.runTime)):
 							index =i
 							found = True
 
 							for j in range(index):
-								if((readyQueue[j].guess - readyQueue[j].runTime) == int(x.guess - x.runTime)):
-							 		index = j
-
-
+								if((readyQueue[j].guess - readyQueue[j].runTime) == (x.guess - x.runTime)):
+									for k in range(j,index):
+										if(ord(readyQueue[k].ID) > ord(x.ID)):
+											index = k
 							break
 
-					if (found == False):
 
+					if (found == False):
 						if(len(readyQueue) > 0 and (readyQueue[-1].guess - readyQueue[-1].runTime) < (x.guess-x.runTime) ):
-							foundLongest = True
+								foundLongest = True
 
 						for i in range(len(readyQueue)):
 							if(foundLongest):
 								break
-							if(ord(readyQueue[i].ID) > ord(x.ID)):
+							if(ord(readyQueue[i].ID) > ord(x.ID) and (readyQueue[j].guess - readyQueue[j].runTime) == (x.guess - x.runTime)):
 								index = i
 								found2 = True
 								break
@@ -234,10 +235,12 @@ def SRT(processes, preemptions,lmda,alpha,tcs):
 						readyQueue = readyQueue[:index] + [x] + readyQueue[index:]
 					else:
 						readyQueue.append(x)
-
 					blocked.remove(x)
+					y-=1
+					
 					print("time", str(time) + "ms: Process", x.ID,"(tau", str(x.guess) +"ms) completed I/O; added to the ready queue" , end = " ")  
 					printQueue(readyQueue)
+				y+=1
 
 		
 
