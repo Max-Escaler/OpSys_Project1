@@ -95,6 +95,8 @@ class Process:
 
 def SRT(processes, preemptions,lmda,a,t):
 	endQueue = []
+	printString = False
+	printTime = 0
 	readyQueue = []
 	waitTimes=[]
 	burstTimes=[]
@@ -102,6 +104,7 @@ def SRT(processes, preemptions,lmda,a,t):
 	numPreemptions = 0
 	turnAroundTimes = []
 	avgTurnAroundTime = 0
+	addedString = ""
 	if(not preemptions):
 		print("time 0ms: Simulator started for SJF", end = " ")
 	else:
@@ -127,6 +130,8 @@ def SRT(processes, preemptions,lmda,a,t):
 	index = 0
 	#This program will execute as long as there are processes waiting to arrive, in the ready queue, or in the blocked queue
 	while(len(processList) > 0 or len(readyQueue)>0 or len(blocked) > 0 or len(CPU) > 0 or conSwitching == True):
+
+
 		if(len(processList) == 0 and len(readyQueue)==0 and len(blocked) == 0 and len(CPU) == 0):
 			time+=1
 			if(not preemptions):
@@ -135,40 +140,6 @@ def SRT(processes, preemptions,lmda,a,t):
 				print("time", str(int(time))+"ms: Simulator ended for SRT", end = " ")
 			printQueue(readyQueue)
 			break
-		# We check through all of the processes for an arrival on every tick of the sim
-		for x in processList:
-			## if we find one that is arriving, we add it in the correct place in the readyQueue
-			if(time == x.getAT()):
-				found = False
-				found2 = False
-				foundLongest = False
-				for i in range(len(readyQueue)):
-					if((readyQueue[i].guess - readyQueue[i].runTime) > (x.guess - x.runTime)):
-						index =i
-						found = True
-						break
-
-				if (found == False):
-					if(len(readyQueue) > 0 and (readyQueue[-1].guess - readyQueue[-1].runTime) < (x.guess-x.runTime) ):
-							foundLongest = True
-
-					for i in range(len(readyQueue)):
-						if(foundLongest):
-							break
-						if(ord(readyQueue[i].ID) > ord(x.ID)  and (readyQueue[i].guess - readyQueue[i].runTime) == (x.guess - x.runTime)):
-							index = i
-							found2 = True
-							break
-
-				if (found or found2):
-					readyQueue = readyQueue[:index] + [x] + readyQueue[index:]
-				else:
-					readyQueue.append(x)
-				processList.remove(x)
-				print("time", str(int(time)) + "ms: Process", x.ID,"(tau", str(int(x.guess)) +"ms) arrived; added to ready queue" , end = " ")  
-				printQueue(readyQueue)
-
-
 		if((switchTime == int(int(tcs)/2) and not preempted) or (switchTime == int(tcs) and preempted) ):
 			conSwitching = False
 		if(conSwitching):
@@ -211,6 +182,42 @@ def SRT(processes, preemptions,lmda,a,t):
 		for x in readyQueue:
 			if((x.switchTime == int(int(tcs)/2) and not preempted) or (x.switchTime == int(tcs) and preempted) ) :
 				x.isSwitching=False
+		# We check through all of the processes for an arrival on every tick of the sim
+		for x in processList:
+			## if we find one that is arriving, we add it in the correct place in the readyQueue
+			if(time == x.getAT()):
+				found = False
+				found2 = False
+				foundLongest = False
+				for i in range(len(readyQueue)):
+					if((readyQueue[i].guess - readyQueue[i].runTime) > (x.guess - x.runTime)):
+						index =i
+						found = True
+						break
+
+				if (found == False):
+					if(len(readyQueue) > 0 and (readyQueue[-1].guess - readyQueue[-1].runTime) < (x.guess-x.runTime) ):
+							foundLongest = True
+
+					for i in range(len(readyQueue)):
+						if(foundLongest):
+							break
+						if(ord(readyQueue[i].ID) > ord(x.ID)  and (readyQueue[i].guess - readyQueue[i].runTime) == (x.guess - x.runTime)):
+							index = i
+							found2 = True
+							break
+
+				if (found or found2):
+					readyQueue = readyQueue[:index] + [x] + readyQueue[index:]
+				else:
+					readyQueue.append(x)
+				processList.remove(x)
+				if(time < 1000):
+					print("time", str(int(time)) + "ms: Process", x.ID,"(tau", str(int(x.guess)) +"ms) arrived; added to ready queue" , end = " ")  
+					printQueue(readyQueue)
+
+
+		
 
 		#this section of code handles all of the blocked list and checking if anything is coming off blocking			
 		if(len(blocked) > 0):
@@ -228,11 +235,13 @@ def SRT(processes, preemptions,lmda,a,t):
 						readyQueue = [CPU[0]] + readyQueue
 						CPU.remove(CPU[0])
 						readyQueue.remove(readyQueue[1])
-						print("time", str(int(time)) + "ms: Process", x.ID,"(tau", str(x.guess) +"ms) completed I/O; added to ready queue" , end = "")
+						if(time < 1000):
+							print("time", str(int(time)) + "ms: Process", x.ID,"(tau", str(x.guess) +"ms) completed I/O; added to ready queue" , end = "")
 						x.turnAroundTime = 0
 						#x.waitTime = 0
 						readyQueue = [x] + readyQueue
-						printQueue(readyQueue)
+						if(time < 1000):
+							printQueue(readyQueue)
 						readyQueue = readyQueue[:2] + [CPU[0]] + readyQueue[2:]
 						CPU.remove(CPU[0])
 						blocked.remove(x)
@@ -244,10 +253,22 @@ def SRT(processes, preemptions,lmda,a,t):
 
 
 					if(len(CPU) >0 and (CPU[0].guess - CPU[0].runTime) > (x.guess - x.runTime) and (switchTime == int(int(tcs)/2) or switchTime==int(tcs)) and preemptions):
-						print("time", str(int(time))+"ms: Process",x.ID , "(tau", str(x.guess) +"ms) completed an I/O burst and will preempt",CPU[0].ID, end = " ")
+						if(time < 1000):
+							print("time", str(int(time))+"ms: Process",x.ID , "(tau", str(x.guess) +"ms) completed I/O and will preempt",CPU[0].ID, end = " ")
+							if(len(readyQueue)>0):
+								temp = readyQueue.pop(0)	
+								readyQueue = [x] + readyQueue
+								printQueue(readyQueue)
+								readyQueue.pop(0)
+								readyQueue = [temp] + readyQueue
+							else:
+								readyQueue = [x] + readyQueue
+								printQueue(readyQueue)
+								readyQueue.pop(0)
+
 						x.turnAroundTime = 0
 						#x.waitTime = 0
-						printQueue(readyQueue)
+
 						conSwitching=True
 						switchTime=0
 						CPU[0].switchTime = 0
@@ -279,6 +300,9 @@ def SRT(processes, preemptions,lmda,a,t):
 					found = False
 					found2 = False
 					foundLongest = False
+					
+							
+					#This handles placing processes back into the ready queue
 					for i in range(len(readyQueue)):
 						if((readyQueue[i].guess - readyQueue[i].runTime) > (x.guess - x.runTime)):
 							index =i
@@ -300,7 +324,8 @@ def SRT(processes, preemptions,lmda,a,t):
 						for i in range(len(readyQueue)):
 							if(foundLongest):
 								break
-							if(ord(readyQueue[i].ID) > ord(x.ID) and (readyQueue[j].guess - readyQueue[j].runTime) == (x.guess - x.runTime)):
+
+							if(ord(readyQueue[i].ID) > ord(x.ID) and int(readyQueue[i].guess - readyQueue[i].runTime) == int(x.guess - x.runTime)):
 								index = i
 								found2 = True
 								break
@@ -311,37 +336,41 @@ def SRT(processes, preemptions,lmda,a,t):
 						readyQueue.append(x)
 					blocked.remove(x)
 					y-=1
-					
-					print("time", str(int(time)) + "ms: Process", x.ID,"(tau", str(x.guess) +"ms) completed I/O" , end = "") 
 					x.turnAroundTime = 0
-					#x.waitTime = 0
-					print("; added to ready queue",end = " ")
-					printQueue(readyQueue)
+
+					if(time < 1000):
+						print("time", str(int(time)) + "ms: Process", x.ID,"(tau", str(x.guess) +"ms) completed I/O" , end = "") 
+						#x.waitTime = 0
+						print("; added to ready queue",end = " ")
+						printQueue(readyQueue)
 				y+=1
 
 		
-
+		#To handle printing when a process preempts directly from I/O
 		if(preempted and switchTime == int(tcs) and plop):
-			print("time", str(int(time))+"ms: Process", CPU[0].ID,"started using the CPU for",str(CPU[0].burstTimes[0])+"ms burst", end = " ")
-			printQueue(readyQueue)
+			if(time < 1000):
+				print("time", str(int(time))+"ms: Process", CPU[0].ID,"started using the CPU for",str(CPU[0].burstTimes[0])+"ms burst", end = " ")
+				printQueue(readyQueue)
 			plop = False
 		if(len(CPU) >0 and CPU[0].runTime == CPU[0].burstTimes[0] and len(CPU[0].burstTimes) >1 and ((switchTime == int(int(tcs)/2) and not preempted) or (switchTime == int(tcs) and preempted ) )):
-			if(len(CPU[0].burstTimes)-1 > 1):
-				print("time", str(int(time))+"ms: Process",CPU[0].ID , "completed a CPU burst;",len(CPU[0].burstTimes)-1,"bursts to go", end = " ")
-			else:
-				print("time", str(int(time))+"ms: Process",CPU[0].ID , "completed a CPU burst;",len(CPU[0].burstTimes)-1,"burst to go", end = " ")
+			if(time < 1000):
+				if(len(CPU[0].burstTimes)-1 > 1):
+					print("time", str(int(time))+"ms: Process",CPU[0].ID , "completed a CPU burst;",len(CPU[0].burstTimes)-1,"bursts to go",end = " ")
+				else:
+					print("time", str(int(time))+"ms: Process",CPU[0].ID , "completed a CPU burst;",len(CPU[0].burstTimes)-1,"burst to go", end = " ")
 
-			printQueue(readyQueue)
+				printQueue(readyQueue)
 			turnAroundTimes.append(CPU[0].turnAroundTime+2)
 			waitTimes.append(CPU[0].waitTime)
 			CPU[0].waitTime = 0
 			CPU[0].turnAroundTime = 0
 			CPU[0].guess = float(alpha) * CPU[0].burstTimes[0] + (1-float(alpha))*CPU[0].guess
 			CPU[0].guess = math.ceil(CPU[0].guess)
-			print("time",str(int(time))+"ms: Recalculated tau =",str(CPU[0].guess)+"ms for process",CPU[0].ID, end = " ")
-			printQueue(readyQueue)
-			print("time", str(int(time))+"ms: Process",CPU[0].ID,"switching out of CPU; will block on I/O until time",str(time+CPU[0].IOTimes[0]+int(int(tcs)/2)) + "ms", end = " ")
-			printQueue(readyQueue)
+			if(time < 1000):
+				print("time",str(int(time))+"ms: Recalculated tau =",str(CPU[0].guess)+"ms for process",CPU[0].ID, end = " ")
+				printQueue(readyQueue)
+				print("time", str(int(time))+"ms: Process",CPU[0].ID,"switching out of CPU; will block on I/O until time",str(time+CPU[0].IOTimes[0]+int(int(tcs)/2)) + "ms", end = " ")
+				printQueue(readyQueue)
 			CPU[0].runTime = 0
 			CPU[0].switchTime = 0
 			CPU[0].isSwitching = True
@@ -352,8 +381,9 @@ def SRT(processes, preemptions,lmda,a,t):
 			preempted = False
 			switchTime = 0
 		if(len(CPU) > 0 and len(readyQueue)>0 and  (CPU[0].guess - CPU[0].runTime) > (readyQueue[0].guess - readyQueue[0].runTime) and switchTime == int(int(tcs)/2) and preemptions):
-			print("time", str(int(time))+"ms: Process",readyQueue[0].ID , "will preempt",CPU[0].ID, end = " ")
-			printQueue(readyQueue)
+			if(time < 1000):
+				print("time", str(int(time))+"ms: Process",readyQueue[0].ID , "will preempt",CPU[0].ID, end = " ")
+				printQueue(readyQueue)
 			conSwitching=True
 			switchTime=0
 			preempted = True
@@ -375,11 +405,15 @@ def SRT(processes, preemptions,lmda,a,t):
 			conSwitching = True
 			switchTime = 0
 			preempted = False
-			if(CPU[0].burstTimes[0] - CPU[0].runTime == CPU[0].burstTimes[0]):
-				print("time", str(int(int(time) + int(tcs)/2))+"ms: Process", CPU[0].ID,"started using the CPU for",str(CPU[0].burstTimes[0])+"ms burst", end = " ")
-			else:
-				print("time", str(int(int(time) + int(tcs)/2))+"ms: Process", CPU[0].ID,"started using the CPU with",str(CPU[0].burstTimes[0] - CPU[0].runTime)+"ms remaining", end = " ")
-			printQueue(readyQueue)
+			if(time < 1000):
+				if(CPU[0].runTime == 0):
+					addedString = "time "+ str(int(int(time) + int(tcs)/2))+"ms: Process "+ str(CPU[0].ID)+ " started using the CPU for "+str(CPU[0].burstTimes[0])+"ms burst"
+					
+				else:
+					addedString = "time "+ str(int(int(time) + int(tcs)/2))+"ms: Process "+ str(CPU[0].ID)+ " started using the CPU with "+str(CPU[0].burstTimes[0] - CPU[0].runTime)+"ms remaining"
+			printString = True
+			printTime = int(time) + int(tcs)/2
+			CPU[0].isSwitching = True
 			numContextSwitches += 1
 		if(len(CPU) >0 and CPU[0].runTime == CPU[0].burstTimes[0] and len(CPU[0].burstTimes) ==1 and ((switchTime == int(int(tcs)/2) and not preempted) or (switchTime == int(tcs) and preempted ) )):
 			print("time", str(int(time))+"ms: Process",CPU[0].ID , "terminated", end = " ")
@@ -389,6 +423,11 @@ def SRT(processes, preemptions,lmda,a,t):
 			preempted = False
 			conSwitching = True
 			switchTime = 0
+		if(printString == True and int(time) == printTime):
+			if(time < 1000):
+				print(addedString, end = " ")
+				printQueue(readyQueue)
+			printString = False
 
 
 
@@ -408,12 +447,22 @@ def SRT(processes, preemptions,lmda,a,t):
 	for x in burstTimes:
 		avgBurstTimes += x
 	avgBurstTimes = avgBurstTimes / len(burstTimes)
-
-	print("Average Burst Times:", '%.3f'%avgBurstTimes)
-	print("Average Wait Times:",'%.3f'%avgWaitTime)
-	print("Average Turn Around Time:", '%.3f'%avgTurnAroundTime)
-	print("Context Switches:",numContextSwitches)
-	print("Preemptions:", numPreemptions)
+	f = open("simout.txt", "a")
+	if(preemptions):
+		f.write("Algorithm SRT\n")
+	else:
+		f.write("Algorithm SJF\n")
+	ABT = "-- average CPU burst time: "+ '%.3f'%avgBurstTimes + " ms\n"
+	f.write(ABT)
+	AWT = "-- average wait time: "+'%.3f'%avgWaitTime+ " ms\n"
+	f.write(AWT)
+	ATAT = "-- average turnaround time: "+ '%.3f'%avgTurnAroundTime+ " ms\n"
+	f.write(ATAT)
+	CS = "-- total number of context switches: "+str(numContextSwitches)+ "\n"
+	f.write(CS)
+	NP = "-- total number of preemptions: "+ str(numPreemptions)+ "\n"
+	f.write(NP)
+	f.write("\n")
 ## Driver Function
 
 ## Pseudo random generation of processes
@@ -473,11 +522,18 @@ for x in range(numProcesses):
 	SRTprocesses.append(q)
 ### processes is a list of the generated process objects
 for x in processes:
-	print("Process",x.ID,"[NEW] (arrival time",x.arrivalTime,"ms)",x.bursts,"CPU bursts" )
+	if(x.bursts >1):
+		print("Process",x.ID,"[NEW] (arrival time",x.arrivalTime,"ms)",x.bursts,"CPU bursts" )
+	else:
+		print("Process",x.ID,"[NEW] (arrival time",x.arrivalTime,"ms)",x.bursts,"CPU burst" )
+
 SRT(processes, False, lmda, alpha, tcs)
 print("")
 for x in SRTprocesses:
-	print("Process",x.ID,"[NEW] (arrival time",x.arrivalTime,"ms)",x.bursts,"CPU bursts" )
+	if(x.bursts >1):
+		print("Process",x.ID,"[NEW] (arrival time",x.arrivalTime,"ms)",x.bursts,"CPU bursts" )
+	else:
+		print("Process",x.ID,"[NEW] (arrival time",x.arrivalTime,"ms)",x.bursts,"CPU burst" )
 SRT(SRTprocesses, True, lmda, alpha, tcs)
 
 
