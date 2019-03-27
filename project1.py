@@ -1,6 +1,9 @@
 import sys
 import math
 
+# OpSys Project 1: CPU Scheduling algorithms simulator
+# Team: Max Escaler, Brian Connolly
+
 seed = int(sys.argv[1])
 lmda = float(sys.argv[2])
 upperBound = int(sys.argv[3])
@@ -8,6 +11,10 @@ numProcesses = int(sys.argv[4])
 tcs = sys.argv[5]
 alpha = sys.argv[6]
 timeSlice = sys.argv[7]
+if(len(sys.argv) == 9): # change to handle incorrect args
+	addEnd = sys.argv[8]
+else:
+	addEnd = "END"
 
 def printQueue(queue):
 	new = []
@@ -463,6 +470,314 @@ def SRT(processes, preemptions,lmda,a,t):
 	NP = "-- total number of preemptions: "+ str(numPreemptions)+ "\n"
 	f.write(NP)
 	f.write("\n")
+
+
+def RR(processes, tSlice, insertSide,tcs):
+	endQueue = []
+	printString = False
+	printTime = 0
+	readyQueue = []
+	waitTimes=[]
+	burstTimes=[]
+	numContextSwitches = 0
+	numPreemptions = 0
+	turnAroundTimes = []
+	avgTurnAroundTime = 0
+
+	for x in processes:
+		for y in x.burstTimes:
+			burstTimes.append(y)
+
+	processList = processes.copy()
+	readyQueue = []
+	CPU = []
+	blocked = []
+	conSwitching = False
+	preempted = False
+	switchTime = int(int(tcs)/2)
+	plop = False
+	time = 0 # keeps track of the global cpu runtime
+	# timeRan = 0 # keeps track of how long a given process has run. Checked against tSlice
+	# contextLag = tcs # used for counting context switch time
+	
+	if(tSlice != sys.maxsize):
+		print("time 0ms: Simulator started for RR", end = " ")
+	else:
+		print("time 0ms: Simulator started for FCFS", end = " ")
+	printQueue(readyQueue)
+	
+	while(len(processList)>0 or len(readyQueue)>0 or len(blocked)>0 or len(CPU)>0 or conSwitching == True):
+		
+		if(len(processList) == 0 and len(readyQueue)==0 and len(blocked) == 0 and len(CPU) == 0):
+			time+=1
+			if(tSlice != sys.maxsize):
+				print("time", str(time)+"ms: Simulator ended for RR", end = " ")
+			else:
+				print("time", str(time)+"ms: Simulator ended for FCFS", end = " ")
+
+			printQueue(readyQueue)
+			break
+
+
+		if((switchTime == int(int(tcs)/2) and not preempted) or (switchTime == int(tcs) and preempted) ):
+			conSwitching = False	
+		if(conSwitching):
+			switchTime += 1
+
+		if(len(CPU) == 1):
+			if(conSwitching):
+				CPU[0].wait()
+			else:
+				CPU[0].tick()
+			for x in readyQueue:
+				x.wait()
+
+			if(conSwitching):
+				for x in blocked:
+					if(x.isSwitching):
+						x.wait()
+					else:
+						x.block()
+			else:
+				for x in blocked:
+					x.block()
+		else: # No process in the CPU
+			for x in readyQueue:
+				x.wait()
+			if(conSwitching):
+				for x in blocked:
+					if(x.isSwitching):
+						x.wait()
+					else:
+						x.block()
+			else:
+				for x in blocked:
+					x.block()
+
+		for x in blocked:
+			# if((switchTime == int(int(tcs)/2) and not preempted) or (switchTime == int(tcs) and preempted) ):
+			if(switchTime == int(int(tcs)/2)):
+				x.isSwitching = False
+		for x in readyQueue:
+			if((switchTime == int(int(tcs)/2) and not preempted) or (switchTime == int(tcs) and preempted) ):
+				x.isSwitching = False
+		# if(len(CPU) > 0):
+		# 	if(CPU[0].isSwitching and switch2 == True and CPU[0].switchTime == int(int(tcs))/2):
+		# 		CPU[0].isSwitching = False
+
+		x = len(blocked)-1
+		blocked.sort(key=lambda process: process.ID, reverse=True)
+		while(x>=0):
+
+			if(blocked[x].blockedTime == blocked[x].IOTimes[0]):
+				blocked[x].blockedTime = 0
+				blocked[x].IOTimes.pop(0)
+				blocked[x].turnAroundTime = 0
+				if(insertSide == "BEGINNING"):
+					readyQueue = [blocked[x]] + readyQueue
+					
+				else:
+					readyQueue = readyQueue + [blocked[x]]
+				if(time<1000):	
+					print("time", str(time)+"ms: Process",blocked[x].ID,"completed I/O; added to ready queue", end= " ")
+					printQueue(readyQueue)
+				blocked.remove(blocked[x])
+			x -= 1
+		
+		# this will loop through the list of processes that have yet to arrive and 
+		# if their arrival time matches the current time they will be moved to the 
+		# process queue
+		for x in processList:
+			if(time == x.getAT() ):
+				if(insertSide == "BEGINNING"):
+					readyQueue.insert(0,x)
+				else:
+					readyQueue.append(x)
+				processList.remove(x)
+				print("time", str(time) + "ms: Process", x.ID,"arrived; added to ready queue" , end = " ")  
+				printQueue(readyQueue)
+
+		if(((preempted and switchTime == int(tcs)) or (not preempted and switchTime == int(int(tcs)/2))) and plop and (len(CPU) > 0) ):
+			# print((preempted and switchTime == int(tcs)), (not preempted and switchTime == int(int(tcs)/2)), plop, (len(CPU) > 0))
+			if(time < 1000):
+				if(CPU[0].guess == 1): # repurposed guess to determine if a process had been preempted
+					print("time", str(int(time))+"ms: Process", CPU[0].ID,"started using the CPU with",str(CPU[0].burstTimes[0])+"ms remaining", end = " ")
+				else:
+					print("time", str(int(time))+"ms: Process", CPU[0].ID,"started using the CPU for",str(CPU[0].burstTimes[0])+"ms burst", end = " ")
+				printQueue(readyQueue)
+			# print("time", str(int(time))+"ms: Process", CPU[0].ID,"started using the CPU for",str(CPU[0].burstTimes[0])+"ms burst", end = " ")
+			# printQueue(readyQueue)
+			plop = False # need to print out CPU usage
+
+		
+		if(len(CPU)==1 and ((switchTime == int(int(tcs)/2) and not preempted) or (switchTime == int(tcs) and preempted)) ):
+			
+			if(CPU[0].runTime == int(tSlice) and len(CPU[0].burstTimes) >= 1 and (CPU[0].burstTimes[0] != int(tSlice))):
+				if(len(readyQueue)==0):
+					if(time < 1000):
+						print("time", str(time)+"ms: Time slice expired; no preemption because ready queue is empty", end = " ")
+						printQueue(readyQueue)
+					turnAroundTimes.append(CPU[0].turnAroundTime + int(int(tcs)/2))
+					waitTimes.append(CPU[0].waitTime)
+					CPU[0].burstTimes[0] -= int(tSlice)
+					CPU[0].runTime = 0
+					CPU[0].waitTime = 0
+					CPU[0].turnAroundTime = 0
+				else:
+					# time 457ms: Time slice expired; process B preempted with 78ms to go [Q A]
+					if(time < 1000):
+						print("time", str(time)+"ms: Time slice expired; process",CPU[0].ID , "preempted with",str(CPU[0].burstTimes[0]-int(tSlice))+"ms to go", end = " ")
+						printQueue(readyQueue)
+					turnAroundTimes.append(CPU[0].turnAroundTime+int(int(tcs)/2))
+					waitTimes.append(CPU[0].waitTime)
+					numPreemptions += 1
+					numContextSwitches += 1
+					CPU[0].burstTimes[0] -= int(tSlice)
+					CPU[0].runTime = 0
+					CPU[0].switchTime = 0
+					CPU[0].isSwitching = True
+					CPU[0].guess = 1
+					CPU[0].waitTime = 0
+					CPU[0].turnAroundTime = 0
+					readyQueue[0].isSwitching = True
+					readyQueue[0].switchTime = 0
+					if(insertSide == "BEGINNING"):
+						readyQueue = [CPU[0]] + readyQueue
+						CPU.remove(0)
+						CPU += [readyQueue.pop(1)]
+					else:
+						readyQueue += [CPU.pop()]
+						CPU += [readyQueue.pop(0)]
+					# if(time < 1000):
+					# 	if(CPU[0].guess == 1): # repurposed guess to determine if a process had been preempted
+					# 		print("time", str(int(int(time) + int(tcs)))+"ms: Process", CPU[0].ID,"started using the CPU with",str(CPU[0].burstTimes[0])+"ms remaining", end = " ")
+					# 	else:
+					# 		print("time", str(int(int(time) + int(tcs)))+"ms: Process", CPU[0].ID,"started using the CPU for",str(CPU[0].burstTimes[0])+"ms burst", end = " ")
+					# 	printQueue(readyQueue)
+					conSwitching = True
+					preempted = True
+					switchTime = 0
+					plop = True
+			elif(CPU[0].runTime == CPU[0].burstTimes[0]  and len(CPU[0].burstTimes) > 1 ):	
+				# time 177ms: Process B completed a CPU burst; 20 bursts to go [Q A]
+				if(time < 1000):
+					if(len(CPU[0].burstTimes) == 2):
+						print("time", str(time)+"ms: Process",CPU[0].ID , "completed a CPU burst;",str(len(CPU[0].burstTimes)-1),"burst to go", end = " ")
+					else:
+						print("time", str(time)+"ms: Process",CPU[0].ID , "completed a CPU burst;",str(len(CPU[0].burstTimes)-1),"bursts to go", end = " ")
+					printQueue(readyQueue)
+					print("time", str(time)+"ms: Process",CPU[0].ID , "switching out of CPU; will block on I/O until time",str(time+CPU[0].IOTimes[0] + int(int(tcs)/2) )+"ms", end = " ")
+					printQueue(readyQueue)
+
+				turnAroundTimes.append(CPU[0].turnAroundTime+int(int(tcs)/2))
+				waitTimes.append(CPU[0].waitTime)
+				numContextSwitches += 1
+				CPU[0].burstTimes.pop(0)
+				CPU[0].runTime = 0
+				CPU[0].switchTime = 0
+				CPU[0].isSwitching = True 			## merge the logic of these two, very similar
+				CPU[0].waitTime = 0 			## merge the logic of these two, very similar
+				CPU[0].turnAroundTime = 0 			## merge the logic of these two, very similar
+				if(len(readyQueue) > 0):
+					readyQueue[0].isSwitching = True
+					readyQueue[0].switchTime = 0
+					CPU.append(readyQueue.pop(0) )
+					# if(time < 1000):
+					# 	if(CPU[1].guess == 1): # repurposed guess to determine if a process had been preempted
+					# 		print("time", str(int(int(time) + int(tcs)))+"ms: Process", CPU[1].ID,"started using the CPU with",str(CPU[1].burstTimes[0])+"ms remaining", end = " ")
+					# 	else:
+					# 		print("time", str(int(int(time) + int(tcs)))+"ms: Process", CPU[1].ID,"started using the CPU for",str(CPU[1].burstTimes[0])+"ms burst", end = " ")
+					# 	# print("time", str(int(int(time) + int(tcs)))+"ms: Process", CPU[1].ID,"started using the CPU for",str(CPU[1].burstTimes[0])+"ms burst", end = " ")
+					# 	printQueue(readyQueue)
+				CPU[0].guess = 0
+				blocked.append(CPU.pop(0))
+				conSwitching = True
+				preempted = True
+				switchTime = 0
+				plop = True
+
+		# elif(len(CPU)==0 and (switchTime == int(int(tcs)/2) and len(readyQueue) == 1)): # when process returns from I/O and another just moved out of CPU
+		# 	CPU.append(readyQueue.pop(0))
+		# 	if(CPU[0].guess == 1): # repurposed guess to determine if a process had been preempted
+		# 		print("time", str(int(int(time) + int(tcs)/2))+"ms: Process", CPU[0].ID,"started using the CPU with",str(CPU[0].burstTimes[0])+"ms remaining", end = " ")
+		# 	else:
+		# 		print("time", str(int(int(time) + int(tcs)/2))+"ms: Process", CPU[0].ID,"started using the CPU for",str(CPU[0].burstTimes[0])+"ms burst", end = " ")
+		# 	printQueue(readyQueue)
+		# 	CPU[0].isSwitching = True
+		# 	CPU[0].switchTime = 0
+		# 	conSwitching = True
+		# 	preempted = False
+		# 	switchTime = 0
+
+		elif(len(CPU)==0 and ((switchTime == int(int(tcs)/2) and not preempted) or (switchTime == int(tcs) and preempted)) and len(readyQueue) > 0):
+			CPU.append(readyQueue.pop(0))
+			# if(time < 1000):
+			# 	if(CPU[0].guess == 1): # repurposed guess to determine if a process had been preempted
+			# 		print("time", str(int(int(time) + int(tcs)/2))+"ms: Process", CPU[0].ID,"started using the CPU with",str(CPU[0].burstTimes[0])+"ms remaining", end = " ")
+			# 	else:
+			# 		print("time", str(int(int(time) + int(tcs)/2))+"ms: Process", CPU[0].ID,"started using the CPU for",str(CPU[0].burstTimes[0])+"ms burst", end = " ")
+			# 	printQueue(readyQueue)
+			turnAroundTimes.append(CPU[0].turnAroundTime+int(int(tcs)/2))
+			waitTimes.append(CPU[0].waitTime)
+			# numContextSwitches += 1
+			CPU[0].isSwitching = True
+			CPU[0].switchTime = 0
+			CPU[0].waitTime = 0
+			CPU[0].turnAroundTime = 0
+			conSwitching = True
+			preempted = False
+			switchTime = 0
+			plop = True
+
+
+
+		if(len(CPU) > 0 and CPU[0].runTime == CPU[0].burstTimes[0] and len(CPU[0].burstTimes) == 1 and \
+		((switchTime == int(int(tcs)/2) and not preempted) or (switchTime == int(tcs) and preempted))):
+			print("time", str(int(time))+"ms: Process",CPU[0].ID , "terminated", end = " ")
+			printQueue(readyQueue)
+			# turnAroundTimes.append(CPU[0].turnAroundTime+2)
+			# endQueue.append(CPU.pop(0))
+			CPU.pop(0)
+			numContextSwitches += 1
+			conSwitching = True
+			preempted = False
+			switchTime = 0
+
+
+		time += 1
+
+
+
+	avgWaitTime = 0
+	avgBurstTimes = 0
+	for x in turnAroundTimes:
+		avgTurnAroundTime += x
+	avgTurnAroundTime = avgTurnAroundTime/len(turnAroundTimes)
+	for x in waitTimes:
+		avgWaitTime +=x
+	avgWaitTime = avgWaitTime / len(waitTimes)
+	for x in burstTimes:
+		avgBurstTimes += x
+	avgBurstTimes = avgBurstTimes / len(burstTimes)
+	f = open("simout.txt", "a")
+	if(tSlice != sys.maxsize):
+		f.write("Algorithm RR\n")
+	else:
+		f.write("Algorithm FCFS\n")
+	ABT = "-- average CPU burst time: "+ '%.3f'%avgBurstTimes + " ms\n"
+	f.write(ABT)
+	AWT = "-- average wait time: "+'%.3f'%avgWaitTime+ " ms\n"
+	f.write(AWT)
+	ATAT = "-- average turnaround time: "+ '%.3f'%avgTurnAroundTime+ " ms\n"
+	f.write(ATAT)
+	CS = "-- total number of context switches: "+str(numContextSwitches)+ "\n"
+	f.write(CS)
+	NP = "-- total number of preemptions: "+ str(numPreemptions)+ "\n"
+	f.write(NP)
+	f.write("\n")
+
+
+
 ## Driver Function
 
 ## Pseudo random generation of processes
@@ -471,6 +786,8 @@ rand.srand(seed)
 ID = 0
 processes = []
 SRTprocesses=[]
+FCFSprocesses=[]
+RRprocesses=[]
 for x in range(numProcesses):
 	y=upperBound+1
 	while (y>upperBound):
@@ -481,8 +798,12 @@ for x in range(numProcesses):
 	bursts = int(rand.drand() * 100)+1
 	cpuBurst = []
 	cpuBurst2 = []
+	cpuBurst3 = []
+	cpuBurst4 = []
 	ioBurst = []
 	ioBurst2=[]
+	ioBurst3=[]
+	ioBurst4=[]
 	for q in range(bursts):
 		if (q == bursts-1):
 			p=upperBound+1
@@ -493,6 +814,8 @@ for x in range(numProcesses):
 
 			cpuBurst.append(math.ceil(p))
 			cpuBurst2.append(math.ceil(p))
+			cpuBurst3.append(math.ceil(p))
+			cpuBurst4.append(math.ceil(p))
 			break
 
 
@@ -504,6 +827,8 @@ for x in range(numProcesses):
 
 		cpuBurst.append(math.ceil(p))
 		cpuBurst2.append(math.ceil(p))
+		cpuBurst3.append(math.ceil(p))
+		cpuBurst4.append(math.ceil(p))
 
 
 		p=upperBound+1
@@ -512,15 +837,24 @@ for x in range(numProcesses):
 			p = -math.log(r)/lmda;
 		ioBurst.append(math.ceil(p))
 		ioBurst2.append(math.ceil(p))
+		ioBurst3.append(math.ceil(p))
+		ioBurst4.append(math.ceil(p))
 
 
 	z = Process(arrivalTime,bursts,cpuBurst,ioBurst,65+ID,lmda,"SJF")
 	q = Process(arrivalTime,bursts,cpuBurst2,ioBurst2,65+ID,lmda,"SRT")
+	f = Process(arrivalTime,bursts,cpuBurst3,ioBurst3,65+ID,lmda,"FCFS")
+	r = Process(arrivalTime,bursts,cpuBurst4,ioBurst4,65+ID,lmda,"RR")
 
 	ID += 1
 	processes.append(z)
 	SRTprocesses.append(q)
+	FCFSprocesses.append(f)
+	RRprocesses.append(r)
 ### processes is a list of the generated process objects
+
+fcfsTSlice = sys.maxsize
+
 for x in processes:
 	if(x.bursts >1):
 		print("Process",x.ID,"[NEW] (arrival time",x.arrivalTime,"ms)",x.bursts,"CPU bursts" )
@@ -529,13 +863,33 @@ for x in processes:
 
 SRT(processes, False, lmda, alpha, tcs)
 print("")
+
 for x in SRTprocesses:
 	if(x.bursts >1):
 		print("Process",x.ID,"[NEW] (arrival time",x.arrivalTime,"ms)",x.bursts,"CPU bursts" )
 	else:
 		print("Process",x.ID,"[NEW] (arrival time",x.arrivalTime,"ms)",x.bursts,"CPU burst" )
-SRT(SRTprocesses, True, lmda, alpha, tcs)
 
+SRT(SRTprocesses, True, lmda, alpha, tcs)
+print("")
+
+for x in FCFSprocesses:
+	if(x.bursts >1):
+		print("Process",x.ID,"[NEW] (arrival time",x.arrivalTime,"ms)",x.bursts,"CPU bursts" )
+	else:
+		print("Process",x.ID,"[NEW] (arrival time",x.arrivalTime,"ms)",x.bursts,"CPU burst" )
+
+RR(FCFSprocesses, fcfsTSlice, addEnd, tcs)
+print("")
+
+for x in RRprocesses:
+	if(x.bursts >1):
+		print("Process",x.ID,"[NEW] (arrival time",x.arrivalTime,"ms)",x.bursts,"CPU bursts" )
+	else:
+		print("Process",x.ID,"[NEW] (arrival time",x.arrivalTime,"ms)",x.bursts,"CPU burst" )
+
+RR(RRprocesses, timeSlice, addEnd, tcs)
+print("")
 
 
 
